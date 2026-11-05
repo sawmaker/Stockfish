@@ -57,6 +57,13 @@ inline int lmr_divisor(int depth) {
     return 3000 + 7 * (d - 8) * (d - 8);
 }
 
+// Minimum history-based statScore, relative to the search depth, for which the first
+// quiet move of a PV node without a TT move is searched one ply deeper. Expressed in
+// the same units as ss->statScore.
+constexpr int HISTORY_EXTENSION_MIN = 4096;
+// Only worthwhile at low depth: deeper PV nodes are already accurate and expensive.
+constexpr int HISTORY_EXTENSION_MAX_DEPTH = 10;
+
 namespace TB = Tablebases;
 
 void syzygy_extend_pv(const OptionsMap&            options,
@@ -1384,6 +1391,17 @@ moves_loop:  // When in check, search starts here
 
         if (!capture && !is_decisive(alpha))
             r += 3 * std::clamp(alpha - eval, -64, 96);
+
+        // At nodes without a TT move the search has no way to tell which quiet move is
+        // critical, so singular extensions cannot apply, and IIR (step 12) already spends
+        // a ply to find out. If the move ordering heuristics consider the first quiet move
+        // clearly better than everything else, give that ply back so the PV gets the extra
+        // accuracy where the TT gives no guidance.
+        if (!rootNode && !capture && !extension && !ss->inCheck && PvNode && !ttData.move
+            && moveCount == 1 && depth >= 6 && depth <= HISTORY_EXTENSION_MAX_DEPTH
+            && is_valid(alpha) && !is_decisive(alpha)
+            && ss->statScore > HISTORY_EXTENSION_MIN * depth)
+            newDepth++;
 
         // Scale up reductions for expected ALL nodes
         if (allNode)

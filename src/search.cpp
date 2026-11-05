@@ -1385,6 +1385,10 @@ moves_loop:  // When in check, search starts here
         if (!capture && !is_decisive(alpha))
             r += 3 * std::clamp(alpha - eval, -64, 96);
 
+        // Give checking moves a little more search before reducing them.
+        if (givesCheck)
+            r -= 256;
+
         // Scale up reductions for expected ALL nodes
         if (allNode)
             r += r * 276 / (256 * depth + 268);

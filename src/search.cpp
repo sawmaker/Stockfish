@@ -1197,8 +1197,10 @@ moves_loop:  // When in check, search starts here
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
-            // Skip quiet moves if movecount exceeds our threshold
-            if (moveCount >= (3 + depth * depth) / (2 - improving))
+            // Skip quiet moves if movecount exceeds our threshold.
+            // PV nodes need more accurate scores, so examine a couple of
+            // extra quiet moves before pruning by move count.
+            if (moveCount >= (3 + depth * depth) / (2 - improving) + 2 * PvNode)
                 mp.skip_quiet_moves();
 
             // Reduced depth of the next LMR search

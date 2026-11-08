@@ -111,10 +111,17 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
     return 13806 * pcv + 9512 * micv + 11615 * (wnpcv + bnpcv) + cntcv;
 }
 
+// Divisor that converts the (weighted) correction history value into evaluation
+// units. A smaller divisor gives the correction history more influence on the
+// static evaluation and on the pruning margins derived from it. Was 131072 (2^17);
+// the correction has become relatively under-weighted with the SFNNv19 network.
+constexpr int CORRECTION_HISTORY_DIVISOR = 114032;
+
 // Add correctionHistory value to raw staticEval and guarantee evaluation
 // does not hit the tablebase range.
 Value to_corrected_static_eval(const Value v, const int cv) {
-    return std::clamp(v + cv / 131072, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+    return std::clamp(v + cv / CORRECTION_HISTORY_DIVISOR, VALUE_TB_LOSS_IN_MAX_PLY + 1,
+                      VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
 void update_correction_history(const Position& pos,

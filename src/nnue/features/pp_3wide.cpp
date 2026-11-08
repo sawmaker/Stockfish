@@ -70,6 +70,39 @@ void PP_3Wide::append_active_indices(Color perspective, const Position& pos, Ind
     const Bitboard white = pos.pieces(WHITE, PAWN);
     const Bitboard black = pos.pieces(BLACK, PAWN);
 
+#ifdef USE_AVX512ICL
+    if (popcount(white | black) <= 17)
+    {
+        const u8      orientation = OrientTBL[ksq] ^ u8(56 * perspective);
+        const __m512i adjusted =
+          _mm512_sub_epi8(_mm512_xor_si512(AllSquares, _mm512_set1_epi8(orientation)),
+                          _mm512_set1_epi8(8));
+        const Bitboard friendly = perspective == WHITE ? white : black;
+        const Bitboard enemy    = perspective == WHITE ? black : white;
+        const __m512i  ids      = _mm512_mask_blend_epi8(
+          friendly, _mm512_add_epi8(adjusted, _mm512_set1_epi8(48)), adjusted);
+
+        for (Bitboard u = white | black; u;)
+        {
+            const Square   a        = pop_lsb(u);
+            const Bitboard partners = pawn_pair_bb(a) & u;
+            const int      n        = popcount(partners);
+            if (!n)
+                continue;
+
+            const u16     colorOff = (enemy & a) ? 48 : 0;
+            const u16     aId      = u16(((u8(a) ^ orientation) - 8) + colorOff);
+            const __m256i pids     = _mm256_cvtepu8_epi16(
+              _mm512_castsi512_si128(_mm512_maskz_compress_epi8(partners, ids)));
+            const __m256i feats = pp_idx_epi16(_mm256_set1_epi16(aId), pids);
+
+            u16* w = active.make_space(n);
+            _mm256_mask_storeu_epi16(w, static_cast<__mmask16>((1u << n) - 1u), feats);
+        }
+        return;
+    }
+#endif
+
     Bitboard bb = white;
     while (bb)
     {

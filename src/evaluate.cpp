@@ -37,6 +37,19 @@
 
 namespace Stockfish {
 
+namespace Eval {
+
+// Defaults equal the values the previous tuning settled on; engine.cpp's UCI
+// options overwrite them.
+int OptimismScale   = 456;
+int OptimismOffset  = 85;
+int CorrelDivisor   = 65536;
+int MaterialDivisor = 90649;
+int MaterialPawn    = 521;
+int Rule50Divisor   = 189;
+
+}  // namespace Eval
+
 static int simple_eval(const Position& pos) {
     const Color c = pos.side_to_move();
     return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c)) + pos.non_pawn_material(c)
@@ -69,14 +82,14 @@ Value scale_evaluation(Value nnue, int optimism, const Position& pos) {
     int correl = (se_norm * nnue_norm) / 512;
 
     // When winning, we boost easy positions, and vice versa
-    int v = nnue + (nnue + optimism) * correl / 65536;
+    int v = nnue + (nnue + optimism) * correl / Eval::CorrelDivisor;
 
     // Scale the combined evaluation by total material
-    int material = 521 * pos.count<PAWN>() + pos.non_pawn_material();
-    v += i64(material) * v / 90649;
+    int material = Eval::MaterialPawn * pos.count<PAWN>() + pos.non_pawn_material();
+    v += i64(material) * v / Eval::MaterialDivisor;
 
     // Damp down the evaluation linearly when shuffling
-    v -= v * pos.rule50_count() / 189;
+    v -= v * pos.rule50_count() / Eval::Rule50Divisor;
 
     // Guarantee that the evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);

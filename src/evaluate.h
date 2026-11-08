@@ -29,6 +29,16 @@ class Position;
 
 namespace Eval {
 
+// Net- and search-dependent evaluation scaling. Exposed as UCI options so tuning
+// runs can move them; defaults are the values the engine was tuned with.
+extern int OptimismScale;    // scales the root-average-based optimism term
+extern int OptimismOffset;   // softens optimism for small averages
+extern int CorrelDivisor;    // gain of the material/NNUE correlation term
+extern int MaterialDivisor;  // strength of the total-material rescaling
+extern int MaterialPawn;     // pawn weight used by that rescaling
+extern int Rule50Divisor;    // strength of the rule50 shuffling dampening
+
+
 // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
 // for the build process (profile-build and fishtest) to work. Do not change the
 // name of the macro or the location where this macro is defined, as it is used

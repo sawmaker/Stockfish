@@ -108,6 +108,33 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
 
     options.add("Move Overhead", Option(10, 0, 5000));
 
+    // Evaluation scaling, identical defaults. These exist so a tuning run can adjust
+    // the scaling that depends on the NNUE net in use.
+    options.add("OptimismScale", Option(456, 100, 900, [](const Option& o) {
+        Eval::OptimismScale = int(o);
+        return std::nullopt;
+    }));
+    options.add("OptimismOffset", Option(85, 20, 300, [](const Option& o) {
+        Eval::OptimismOffset = int(o);
+        return std::nullopt;
+    }));
+    options.add("CorrelDivisor", Option(65536, 16384, 262144, [](const Option& o) {
+        Eval::CorrelDivisor = int(o);
+        return std::nullopt;
+    }));
+    options.add("MaterialDivisor", Option(90649, 30000, 250000, [](const Option& o) {
+        Eval::MaterialDivisor = int(o);
+        return std::nullopt;
+    }));
+    options.add("MaterialPawn", Option(521, 200, 1000, [](const Option& o) {
+        Eval::MaterialPawn = int(o);
+        return std::nullopt;
+    }));
+    options.add("Rule50Divisor", Option(189, 80, 400, [](const Option& o) {
+        Eval::Rule50Divisor = int(o);
+        return std::nullopt;
+    }));
+
     options.add("nodestime", Option(0, 0, 10000));
 
     options.add("UCI_Chess960", Option(false));

@@ -79,7 +79,7 @@ using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
 const std::array<int, MAX_MOVES> reductions = [] {
     std::array<int, MAX_MOVES> table{};
     for (usize i = 1; i < table.size(); ++i)
-        table[i] = int(2872 / 128.0 * std::log(i));
+        table[i] = int(5744 / 128.0 * std::log(i));
     return table;
 }();
 
@@ -1927,8 +1927,9 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
 }
 
 int Search::Worker::reduction(bool i, Depth d, int mn) const {
-    int reductionScale = reductions[d] * reductions[mn];
-    return reductionScale + !i * reductionScale * 197 / 512 + 948;
+    i64 reductionScale = i64(reductions[d]) * reductions[mn];
+    i64 reduction      = reductionScale + !i * reductionScale * 197 / 512;
+    return int(reduction / 4 + 948);
 }
 
 // elapsed() returns the time elapsed since the search started. If the

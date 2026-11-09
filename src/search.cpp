@@ -1710,7 +1710,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     Move  move, bestMove;
     Value bestValue, value, futilityBase;
     bool  pvHit, givesCheck, capture;
-    int   moveCount;
+    int   moveCount, budget;
 
     // Step 1. Initialize node
     if (PvNode)
@@ -1722,6 +1722,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     bestMove    = Move::none();
     ss->inCheck = pos.checkers();
     moveCount   = 0;
+    budget      = 0;
 
     // Used to send selDepth info to GUI (selDepth counts from 1, ply from 0)
     if (PvNode && selDepth < ss->ply + 1)
@@ -1824,9 +1825,6 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             if (!givesCheck && move.to_sq() != prevSq && !is_loss(futilityBase)
                 && move.type_of() != PROMOTION)
             {
-                if (moveCount > 2)
-                    continue;
-
                 Value futilityValue = futilityBase + PieceValue[pos.piece_on(move.to_sq())];
 
                 // If static eval + value of piece we are going to capture is
@@ -1843,6 +1841,14 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                     bestValue = std::max(bestValue, std::min(alpha, futilityBase));
                     continue;
                 }
+
+                // Movecount based pruning. Only moves that survived the material
+                // based filters above are charged to the budget: they are the only
+                // ones that could still change the outcome at this node, so moves
+                // that are skipped for other reasons (a quiet tt move, for
+                // instance) should not eat up the budget of the real candidates.
+                if (budget > 2)
+                    continue;
             }
 
             // Skip non-captures
@@ -1852,6 +1858,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             // Do not search moves with bad enough SEE values
             if (!pos.see_ge(move, -74))
                 continue;
+
+            ++budget;
         }
 
         // Step 7. Make and search the move

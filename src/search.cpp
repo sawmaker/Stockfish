@@ -1198,6 +1198,11 @@ moves_loop:  // When in check, search starts here
         if (ss->ttPv)
             r += 929;
 
+        // Optimization: Skip SEE pruning for root nodes if staticEval is already high
+        // and the move is not a capture or check.
+        if (rootNode && ss->staticEval > alpha + 200 && !capture && !givesCheck)
+            continue;
+
         if (!rootNode)
         {
             // Step 15. Pruning at shallow depths.

@@ -2031,6 +2031,16 @@ void update_all_stats(const Position& pos,
         captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << bonus * 1427 / 1024;
     }
 
+    // Additional penalty for a quiet move that was refuted by a capture.
+    //
+    // If the best move here is a capture, the quiet played at the previous ply
+    // was refuted concretely (it lost material) rather than merely scoring
+    // badly, so its history should drop harder than that of the other quiets.
+    // This mirrors the bonus the fail-low branch gives to a refuted countermove.
+    if (!PvNode && bestMove != ttMove && pos.capture_stage(bestMove) && prevSq != SQ_NONE
+        && !pos.captured_piece() && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit))
+        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus * 400 / 1024);
+
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())

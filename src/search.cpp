@@ -1184,6 +1184,16 @@ moves_loop:  // When in check, search starts here
         movedPiece = pos.moved_piece(move);
         givesCheck = pos.gives_check(move);
 
+        // Quiet moves that attack a major piece are tactical threats and should
+        // be searched more carefully than their move-order position suggests.
+        bool attacksMajor = false;
+        if (!capture && move.type_of() == NORMAL && pos.pieces(~us, ROOK, QUEEN))
+        {
+            Bitboard occupied = (pos.pieces() ^ move.from_sq()) | move.to_sq();
+            Bitboard attacks  = Attacks::attacks_bb(movedPiece, move.to_sq(), occupied);
+            attacksMajor      = attacks & pos.pieces(~us, ROOK, QUEEN);
+        }
+
         // Calculate new depth for this move
         newDepth = depth - 1;
 
@@ -1238,7 +1248,7 @@ moves_loop:  // When in check, search starts here
                             + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
 
                 // Continuation history based pruning
-                if (history < -4136 * depth)
+                if (history < -4136 * depth && !attacksMajor)
                     continue;
 
                 history += 69 * mainHistory[us][move.raw()] / 32;
@@ -1251,7 +1261,7 @@ moves_loop:  // When in check, search starts here
 
                 // Futility pruning: parent node
                 // (*Scaler): Generally, more frequent futility pruning scales well
-                if (!ss->inCheck && lmrDepth < 12 && futilityValue <= alpha)
+                if (!ss->inCheck && !attacksMajor && lmrDepth < 12 && futilityValue <= alpha)
                 {
                     if (bestValue <= futilityValue && !is_decisive(bestValue)
                         && !is_win(futilityValue))
@@ -1262,7 +1272,7 @@ moves_loop:  // When in check, search starts here
                 lmrDepth = std::max(lmrDepth, 0);
 
                 // Prune moves with negative SEE
-                if (!pos.see_ge(move, -23 * lmrDepth * lmrDepth))
+                if (!attacksMajor && !pos.see_ge(move, -23 * lmrDepth * lmrDepth))
                     continue;
             }
         }
@@ -1397,6 +1407,9 @@ moves_loop:  // When in check, search starts here
         // When seeking a mate, reduce non-checking moves more and checking moves less
         if (seekMate && r > 0)
             r += (givesCheck ? -r : r) / 4;
+
+        // Reduce less when the move creates a direct threat to a rook or queen.
+        r -= 512 * attacksMajor;
 
         // Apply the computed LMR
         if (depth >= 2 && moveCount > 1)

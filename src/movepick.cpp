@@ -276,7 +276,11 @@ Move MovePicker::select(Pred filter) {
 // picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move() {
 
-    constexpr int goodQuietThreshold = -14000;
+    // Quiet moves are sorted with a depth-scaled limit (-3560 * depth), so the
+    // threshold that separates "good" from "bad" quiets has to scale with depth
+    // as well. Otherwise, at higher depth moves that were too bad to be sorted
+    // are searched before much better ones.
+    const int goodQuietThreshold = -3560 * depth;
 dispatch:
     switch (stage)
     {

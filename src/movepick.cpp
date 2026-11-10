@@ -204,6 +204,9 @@ ExtMove* MovePicker::generate_and_score() {
 
     MoveList<Type> ml(pos);  // move generation
 
+    const auto* pawnHist =
+      (Type == QUIETS || Type == EVASIONS) ? &sharedHistory->pawn_entry(pos) : nullptr;
+
     ExtMove* it = cur;
     for (auto move : ml)
     {
@@ -226,7 +229,7 @@ ExtMove* MovePicker::generate_and_score() {
 
             // histories
             int value = 2 * (*mainHistory)[us][m.raw()];
-            value += 2 * sharedHistory->pawn_entry(pos)[pc][to];
+            value += 2 * (*pawnHist)[pc][to];
             value += (*continuationHistory[0])[pc][to];
             value += (*continuationHistory[1])[pc][to];
             value += (*continuationHistory[2])[pc][to];
@@ -251,9 +254,11 @@ ExtMove* MovePicker::generate_and_score() {
         else  // Type == EVASIONS
         {
             if (pos.capture_stage(m))
-                m.value = PieceValue[capturedPiece] + (1 << 28);
+                m.value = (*captureHistory)[pc][to][type_of(capturedPiece)]
+                        + 16 * PieceValue[capturedPiece] - PieceValue[pt] + (1 << 28);
             else
-                m.value = (*mainHistory)[us][m.raw()] + (*continuationHistory[0])[pc][to];
+                m.value = (*mainHistory)[us][m.raw()] + (*continuationHistory[0])[pc][to]
+                        + (*pawnHist)[pc][to];
         }
     }
     return it;

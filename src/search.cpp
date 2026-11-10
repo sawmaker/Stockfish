@@ -1379,10 +1379,18 @@ moves_loop:  // When in check, search starts here
             ss->statScore = 873 * int(PieceValue[pos.captured_piece()]) / 128
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
         else
-            ss->statScore =
-              (2252 * mainHistory[us][move.raw()] + 1126 * (*contHist[0])[movedPiece][move.to_sq()]
-               + 1093 * (*contHist[1])[movedPiece][move.to_sq()])
-              / 1024;
+        {
+            // Include longer-range move sequences when estimating quiet-move quality.
+            // The third and fourth continuation histories are less directly related to
+            // the current move, so give them quarter weight before using the score to tune LMR.
+            const int continuationScore =
+              1126 * (*contHist[0])[movedPiece][move.to_sq()]
+              + 1093 * (*contHist[1])[movedPiece][move.to_sq()]
+              + 281 * (*contHist[2])[movedPiece][move.to_sq()]
+              + 273 * (*contHist[3])[movedPiece][move.to_sq()];
+
+            ss->statScore = (2252 * mainHistory[us][move.raw()] + continuationScore) / 1024;
+        }
 
         // Decrease/increase reduction for moves with a good/bad history
         r -= ss->statScore * 439 / 4096;

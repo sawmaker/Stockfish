@@ -129,8 +129,28 @@ void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
         {
             ExtMove tmp = *p, *q;
             *p          = *++sortedEnd;
-            for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
-                *q = *(q - 1);
+
+            // Find the insertion point with binary search when the sorted prefix
+            // is large enough to make fewer comparisons worthwhile.
+            if (sortedEnd - begin >= 8)
+            {
+                ExtMove* lo = begin;
+                ExtMove* hi = sortedEnd;
+                while (lo < hi)
+                {
+                    ExtMove* mid = lo + (hi - lo) / 2;
+                    if (*mid < tmp)
+                        hi = mid;
+                    else
+                        lo = mid + 1;
+                }
+                for (q = sortedEnd; q != lo; --q)
+                    *q = *(q - 1);
+            }
+            else
+                for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
+                    *q = *(q - 1);
+
             *q = tmp;
         }
 }
